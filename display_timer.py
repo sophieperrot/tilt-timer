@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""CODE FOR DISPLAY"""
+"""CODE FOR 4-DIGIT SEVEN SEGMENT DISPLAY (74HC595)"""
 
 import time
 import threading
