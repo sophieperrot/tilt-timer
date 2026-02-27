@@ -42,6 +42,10 @@ class SevenSegmentClock:
 	
 	def _update_hardware(self, segment_hex, digit_index):
 		"""Updates one digit on display"""
+		# Blanking (turning off all digits to prevent ghosting)
+		for digit_obj in self.digits:
+			digit_obj.on()
+		
 		# Prepare segments
 		self.latch_pin.off()
 		self._shift_out(segment_hex)
