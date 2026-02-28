@@ -7,7 +7,7 @@ import time
 sensor = mpu6050(0x68)
 
 DATA_THRESHOLD = 8.0 # g but accounted for tilting
-ORIENTATION_CODE = {"TOP": 1, "BOTTOM": 2, "LEFT": 3, 
+ORIENTATION = {"TOP": 1, "BOTTOM": 2, "LEFT": 3, 
                     "RIGHT": 4, "FRONT": 5, "BACK": 6}
 
 
@@ -22,12 +22,12 @@ class OrientationDetector:
 		data = sensor.get_accel_data()
 		x, y, z = data['x'], data['y'], data['z']
 		
-		if z > DATA_THRESHOLD return ORIENTATION["TOP"]
-		if z < -DATA_THRESHOLD return ORIENTATION["BOTTOM"]
-		if x > DATA_THRESHOLD return ORIENTATION["LEFT"]
-		if x < -DATA_THRESHOLD return ORIENTATION["RIGHT"]
-		if y > DATA_THRESHOLD return ORIENTATION["FRONT"]
-		if y < -DATA_THRESHOLD return ORIENTATION["BACK"]
+		if z > DATA_THRESHOLD: return ORIENTATION["TOP"]
+		if z < -DATA_THRESHOLD: return ORIENTATION["BOTTOM"]
+		if x > DATA_THRESHOLD: return ORIENTATION["LEFT"]
+		if x < -DATA_THRESHOLD: return ORIENTATION["RIGHT"]
+		if y > DATA_THRESHOLD: return ORIENTATION["FRONT"]
+		if y < -DATA_THRESHOLD: return ORIENTATION["BACK"]
 	
 		return None
 
@@ -37,7 +37,7 @@ if __name__ == "__main__":
 	try:
 		while True:
 			if detector.update():
-				print(f"Stable state: {detector.current_confirmed_state)
+				print(f"Stable state: {detector.current_confirmed_state}")
 			time.sleep(0.05) # 20 Hz sampling freq
 	except KeyboardInterrupt:
-		break
+		print("Orientation detection program ending")
