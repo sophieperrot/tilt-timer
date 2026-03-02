@@ -18,7 +18,7 @@ SEGMENT_MAP = (0xc0, 0xf9, 0xa4, 0xb0, 0x99,
 CLEAR_DISPLAY = 0xff
 
 
-class SevenSegmentClock:
+class SevenSegmentDisplay:
 	def __init__(self):
 		# Initialise hardware
 		self.data_pin = OutputDevice(DATA_PIN)
@@ -26,7 +26,6 @@ class SevenSegmentClock:
 		self.clock_pin = OutputDevice(CLOCK_PIN)
 		self.digits = [OutputDevice(pin) for pin in DIGIT_PINS]
 		
-		self.counter = 0
 		self.running = True
 		
 	def _shift_out(self, val):
@@ -52,27 +51,19 @@ class SevenSegmentClock:
 		self.latch_pin.on()
 		
 		# Activate correct digit (common anode: off=active)
-		for i, digit_obj in enumerate(self, digits):
+		for i, digit_obj in enumerate(self.digits):
 			if i == digit_index:
 				digit_obj.off()
 			else:
 				digit_obj.on()
 				
 		time.sleep(0.003) # for vision delay
-	
-	def increment_timer(self):
-		"""Background thread func - increment counter every second"""
-		while self.running:
-			time.sleep(1.0)
-			self.counter += 1
-			print(f"Counter: {self.counter}")
 			
-	def run_display_leep(self):
+	def run_display_loop(self, val):
 		"""Main loop to refresh 4-digit display"""
 		try:
 			while self.running:
 				# Extract digits
-				val = self.counter
 				display_digits = [
 					SEGMENT_MAP[(val // 1000) % 10],
 					SEGMENT_MAP[(val // 100) % 10],
@@ -105,7 +96,7 @@ class SevenSegmentClock:
 			
 
 if __name__ == "__main__":
-	clock = SevenSegmentClock()
+	clock = SevenSegmentDisplay()
 	
 	# Start timer in a background thread
 	timer_thread = threading.Thread(target=clock.increment_timer, daemon=True)
