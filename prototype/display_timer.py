@@ -86,14 +86,16 @@ class SevenSegmentClock:
 			self.stop()
 	
 	def stop(self):
-		print("#nShutting down 4-digit seven segment display")
+		print("\nShutting down 4-digit seven segment display")
 		self.running = False
+		
 		# Turn off segments and digits
 		self.latch_pin.off()
 		self._shift_out(CLEAR_DISPLAY)
 		self.latch_pin.on()
 		for d in self.digits:
 			d.on()
+		
 		# Close pins
 		self.data_pin.close()
 		self.latch_pin.close()
