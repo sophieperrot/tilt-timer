@@ -12,7 +12,7 @@ LATCH_PIN = 23 # ST_CP pin
 CLOCK_PIN = 18 # SH_CP pin
 # GPIO pins
 DIGIT_PINS = (17, 27, 22, 10)
-# Encoding for 0-9 (common anode)
+# Segment codes for 0-9 (common anode)
 SEGMENT_MAP = (0xc0, 0xf9, 0xa4, 0xb0, 0x99, 
                  0x92, 0x82, 0xf8, 0x80, 0x90)
 CLEAR_DISPLAY = 0xff
@@ -25,8 +25,6 @@ class SevenSegmentDisplay:
 		self.latch_pin = OutputDevice(LATCH_PIN)
 		self.clock_pin = OutputDevice(CLOCK_PIN)
 		self.digits = [OutputDevice(pin) for pin in DIGIT_PINS]
-		
-		self.running = True
 		
 	def _shift_out(self, val):
 		"""Sends 8 bits to 74HC595"""
@@ -59,26 +57,23 @@ class SevenSegmentDisplay:
 				
 		time.sleep(0.003) # for vision delay
 			
-	def run_display_loop(self, val):
+	def render_time(self, time):
 		"""Main loop to refresh 4-digit display"""
-		try:
-			while self.running:
-				# Extract digits
-				display_digits = [
-					SEGMENT_MAP[(val // 1000) % 10],
-					SEGMENT_MAP[(val // 100) % 10],
-					SEGMENT_MAP[(val // 10) % 10],
-					SEGMENT_MAP[val % 10]
-				]
-				
-				for index, segment_hex in enumerate(display_digits):
-					self._update_hardware(segment_hex, index)
-		except KeyboardInterrupt:
-			self.stop()
+		minutes = time // 60
+		seconds = time % 60
+		# Extract digits
+		display_digits = [
+			SEGMENT_MAP[(minutes // 10) % 10],
+			SEGMENT_MAP[minutes % 10],
+			SEGMENT_MAP[(seconds // 10) % 10],
+			SEGMENT_MAP[seconds % 10]
+		]
+		
+		for index, segment_hex in enumerate(display_digits):
+			self._update_hardware(segment_hex, index)
 	
 	def stop(self):
 		print("\nShutting down 4-digit seven segment display")
-		self.running = False
 		
 		# Turn off segments and digits
 		self.latch_pin.off()
@@ -86,17 +81,55 @@ class SevenSegmentDisplay:
 		self.latch_pin.on()
 		for d in self.digits:
 			d.on()
+			d.close()
 		
 		# Close pins
 		self.data_pin.close()
 		self.latch_pin.close()
 		self.clock_pin.close()
-		for d in self.digits:
-			d.close()
 			
+class Stopwatch:
+	def __init__(self, display):
+		self.display = display
+		self.running = False
+		self.counter = 0
+	
+	def start(self):
+		"""Start background timer thread"""
+		self.running = True
+		self.thread = threading.Thread(target=self._tick, daemon=True)
+		self.running = False
+
+	def _tick(self):
+		while self.running:
+			time.sleep(1.0)
+			self.counter += 1
+
+	def run_display_loop(self):
+		try:
+			while self.running:
+				self.display.render_time(self.counter)
+		except KeyboardInterrupt:
+			self.stop()
+
+	def stop(self):
+		print("Stopping timer")
+		self.running = False
+		self.display.stop()
+
+class Timer(Stopwatch):
+	def _tick(self):
+		while self.running:
+			time.sleep(1.0)
+			if self.counter > 0:
+				self.counter -= 1
+			elif self.counter == 0:
+				self.stop()
 
 if __name__ == "__main__":
 	clock = SevenSegmentDisplay()
+
+	timer_seconds = 60 # 1 minute timer to test
 	
 	# Start timer in a background thread
 	timer_thread = threading.Thread(target=clock.increment_timer, daemon=True)
