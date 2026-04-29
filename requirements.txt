@@ -1,4 +1,0 @@
-gpiozero
-threading
-mpu6050-raspberrypi
-python3-smbus
