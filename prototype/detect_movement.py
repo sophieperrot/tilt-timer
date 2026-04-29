@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """CODE FOR DETECTING MOVEMENT/STATE WITH ACCELEROMETER (MPU6050RAW)"""
 
-from mpu6050 import mpu6050
+from mpu6050 import MPU6050 as mpu6050
 import time
 
 sensor = mpu6050(0x68)
