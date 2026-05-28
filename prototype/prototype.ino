@@ -12,7 +12,7 @@ const unsigned long faceDurations[6] = {
   60000, // bottom (z+) - 60 sec
   15000, // top (z-)
   30000, // right (x+)
-  50000, // left (x-)
+  5000, // left (x-)
   0, // front (y+) is nothing
   0, // back (y-) is pause timer
 };
@@ -24,11 +24,18 @@ unsigned long timerStartTime;
 unsigned long timerEndTime;
 unsigned long lastDisplayTime = 0;
 
-int getDownFace(float ax, float ay, float az) {
+int getDownFace() {
+  sensors_event_t a, g, temp;
+  mpu.getEvent(&a, &g, &temp);
+
+  float ax = a.acceleration.x;
+  float ay = a.acceleration.y;
+  float az = a.acceleration.z;
+
   float maxVal = ax;
   int maxAxis = 0;
   if (ay > maxVal) { maxVal = ay; maxAxis = 1; }
-  if (az > maxVal) { maxVal = ax; maxAxis = 2; }
+  if (az > maxVal) { maxVal = az; maxAxis = 2; }
 
   if (maxAxis == 2) {
     return (maxVal > 0) ? 0 : 1;
@@ -36,6 +43,41 @@ int getDownFace(float ax, float ay, float az) {
     return (maxVal > 0) ? 2 : 3;
   } else {
     return (maxVal > 0) ? 4 : 5;
+  }
+}
+
+void endTimer(int newFace) {
+  currentFace = newFace;
+  faceStableSince = millis();
+  if (timerRunning) {
+    Serial.println(faceNames[currentFace]);
+    Serial.println("Face change detected, current timer cancelled.");
+    timerRunning = false;
+  }
+}
+
+void pauseTimer(int pauseFace, int timerFace) {
+  Serial.println("timer paused");
+  Serial.print("pause face: ");
+  Serial.println(faceNames[pauseFace]);
+  Serial.print("current face:");
+  Serial.println(faceNames[currentFace]);
+  unsigned long pauseStartTime = millis();
+  timerRunning = false;
+  currentFace = pauseFace;
+  int newFace = currentFace;
+  while (newFace == pauseFace) {
+    newFace = getDownFace();
+    if (newFace == timerFace) {
+      timerEndTime += millis() - pauseStartTime;
+      currentFace = newFace;
+      timerRunning = true;
+      break;
+    } else if (newFace != pauseFace) {
+      endTimer(newFace);
+      break;
+    }
+    delay(20);
   }
 }
 
@@ -60,23 +102,18 @@ void setup(void) {
 }
 
 void loop() {
-  // Get new sensor events
-  sensors_event_t a, g, temp;
-  mpu.getEvent(&a, &g, &temp);
-
-  float ax = a.acceleration.x;
-  float ay = a.acceleration.y;
-  float az = a.acceleration.z;
-
-  int newFace = getDownFace(ax, ay, az);
+  int newFace = getDownFace();
   unsigned long now = millis();
 
-  if (newFace != currentFace) {
-    currentFace = newFace;
-    faceStableSince = now;
-    if (timerRunning) {
-      Serial.println("Face change detected, current timer cancelled.");
-      timerRunning = false;
+  if (newFace == 4 || newFace == 5) {
+    int bufferFace = getDownFace();
+    if (bufferFace != currentFace) {
+      pauseTimer(newFace, currentFace);
+    }
+  } else if (newFace != currentFace) {
+    int bufferFace = getDownFace();
+    if (bufferFace != currentFace) {
+      endTimer(newFace);
     }
   } else {
     if (!timerRunning && (now - faceStableSince > 1000)) {
@@ -93,7 +130,6 @@ void loop() {
       timerRunning = false;
       Serial.println("TIME'S UP!");
     } else {
-      static unsigned long lastPrint = 0;
       if (now - lastDisplayTime >= 1000) {
         lastDisplayTime = now;
         unsigned long timeRemaining = timerEndTime - now;
